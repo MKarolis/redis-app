@@ -17,6 +17,7 @@ run the following commands in `redis-cli`:
 
 ```
 hset user||1 name [Name for your admin user] password [SHA-256 hex of your admin user's password] authority ADMIN
+set lookup||user||[Name for your admin user] 1
 set ticker||user 1
 set ticker||book 0
 set ticker||library 0
