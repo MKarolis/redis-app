@@ -24,7 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -294,19 +293,20 @@ public class RedisApp {
         validateParameterPresent(params.getLibraryId(), "Library Id [-lid]");
         validateLibraryId(params.getLibraryId());
 
-        Set<String> presentBookIds =
-            jedis.hkeys(String.format(TEMPLATE_BOOKCOUNT, params.getLibraryId()));
+        Map<String, String> presentBooks =
+            jedis.hgetAll(String.format(TEMPLATE_BOOKCOUNT, params.getLibraryId()));
 
         List<PipelinedBookResponse> pipelinedBookResponseList = new ArrayList<>();
         Pipeline pipeline = jedis.pipelined();
 
-        presentBookIds.stream().sorted().forEach(id -> {
-            String bookKey = String.format(TEMPLATE_BOOK, id);
+        presentBooks.forEach((key, value) -> {
+            String bookKey = String.format(TEMPLATE_BOOK, key);
             pipelinedBookResponseList.add(
                 PipelinedBookResponse.builder()
-                    .id(Integer.parseInt(id))
+                    .id(Integer.parseInt(key))
                     .title(pipeline.hget(bookKey, "title"))
                     .author(pipeline.hget(bookKey, "author"))
+                    .count(Integer.parseInt(value))
                     .build()
             );
         });
@@ -314,15 +314,17 @@ public class RedisApp {
         pipeline.sync();
 
         System.out.println("Present book List:");
-        System.out.println(String.format("%-8s %-20s %-20s", "id", "title", "author"));
+        System.out.println(String.format("%-8s %-20s %-20s %-8s", "id", "title", "author", "count"));
         System.out.println("-------------------------------------------------------");
+        pipelinedBookResponseList.sort(Comparator.comparingInt(PipelinedBookResponse::getId));
         pipelinedBookResponseList.forEach(book -> {
             System.out.println(
                 String.format(
-                    "%-8s %-20s %-20s",
+                    "%-8s %-20s %-20s %-8s",
                     book.getId(),
                     extractFromResponse(book.getTitle()),
-                    extractFromResponse(book.getAuthor())
+                    extractFromResponse(book.getAuthor()),
+                    book.getCount()
                 )
             );
         });
@@ -358,7 +360,6 @@ public class RedisApp {
 
         jedis.watch(TICKER_LIBRARY, TICKER_BOOK);
         int newLibraryId = Integer.parseInt(jedis.get(TICKER_LIBRARY)) + 1;
-        int bookCount = Integer.parseInt(jedis.get(TICKER_BOOK));
 
         Transaction transaction = jedis.multi();
         transaction.hset(String.format(TEMPLATE_LIBRARY, newLibraryId), Map.of(
@@ -381,9 +382,8 @@ public class RedisApp {
         String title = params.getTitle().trim();
         String author = params.getAuthor().trim();
 
-        jedis.watch(TICKER_BOOK, TICKER_LIBRARY);
+        jedis.watch(TICKER_BOOK);
         int newBookId = Integer.parseInt(jedis.get(TICKER_BOOK)) + 1;
-        int libraryCount = Integer.parseInt(jedis.get(TICKER_LIBRARY));
 
         Transaction transaction = jedis.multi();
         transaction.hset(String.format(TEMPLATE_BOOK, newBookId), Map.of(
