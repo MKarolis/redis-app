@@ -42,11 +42,9 @@ Commands:
 - `RETURN_BOOK -lid [libraryId] -bid [bookId]` Return a book to a library
 
 <h2>Database structure</h2>
-- Libraries, books and users are stored as hashes in form of `[entityType]||[entityId]`, 
-for instance `book||1` or `user||2`
+
+- Libraries, books and users are stored as hashes in form of `[entityType]||[entityId]`, for instance `book||1` or `user||2`
 - Special key `lookup||user||[userName]` is used to lookup user id by his userName
-- Keys `bookcount||[libraryId]` are used to store hashes of book counts in a library. 
-Each field of the hash is book's id, value - book count.
-- Keys `bookstaken||[userId]` are used to store hashes of books that a user has taken.
- Each field of the hash is book's id, value - book count.
+- Keys `bookcount||[libraryId]` are used to store hashes of book counts in a library. Each field of the hash is book's id, value - book count.
+- Keys `bookstaken||[userId]` are used to store hashes of books that a user has taken. Each field of the hash is book's id, value - book count.
 - Keys `ticker||[entityType]` are used to store how many entities of each type are present.
